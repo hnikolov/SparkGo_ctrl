@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spark Amp Controller</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        button { padding: 15px 30px; font-size: 16px; cursor: pointer; margin: 10px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #status { color: #666; margin-top: 20px; }
+        #presets { margin: 15px 0; }
+        #presets button { padding: 12px 24px; }
+        #log { text-align: left; background: #eee; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Spark Amp BLE Controller</h1>
+    <button id="connectBtn">Connect to Spark</button>
+    <button id="runSeqBtn" disabled>Run Sequence</button>
+    <div id="status">Status: Disconnected</div>
+    <div id="presets">
+        <button class="presetBtn" data-preset="0" disabled>Preset 1</button>
+        <button class="presetBtn" data-preset="1" disabled>Preset 2</button>
+        <button class="presetBtn" data-preset="2" disabled>Preset 3</button>
+        <button class="presetBtn" data-preset="3" disabled>Preset 4</button>
+    </div>
+    <h3>Log</h3>
+    <div id="log"></div>
+
+    <script>
+        const SERVICE_UUID = "0000ffc0-0000-1000-8000-00805f9b34fb"; // Base Service
+        const WRITE_UUID   = "0000ffc1-0000-1000-8000-00805f9b34fb";
+        const NOTIFY_UUID  = "0000ffc2-0000-1000-8000-00805f9b34fb";
+
+        let device, server, writeChar, notifyChar;
+        let connected = false;
+
+        function setControlsEnabled(enabled) {
+            document.getElementById('runSeqBtn').disabled = !enabled;
+            document.querySelectorAll('.presetBtn').forEach(b => b.disabled = !enabled);
+        }
+
+        const log = (msg) => {
+            const div = document.getElementById('log');
+            div.innerHTML += `> ${msg}<br>`;
+            div.scrollTop = div.scrollHeight;
+        };
+
+        const hexToBytes = (hex) => {
+            let bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+            }
+            return bytes;
+        };
+
+        async function connect() {
+            try {
+                log("Requesting Bluetooth Device...");
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'Spark' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                log(`Connecting to ${device.name}...`);
+                server = await device.gatt.connect();
+                
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                writeChar = await service.getCharacteristic(WRITE_UUID);
+                notifyChar = await service.getCharacteristic(NOTIFY_UUID);
+
+                // Setup Notifications
+                await notifyChar.startNotifications();
+                notifyChar.addEventListener('characteristicvaluechanged', (event) => {
+                    const value = event.target.value;
+                    let hex = Array.from(new Uint8Array(value.buffer))
+                                   .map(b => b.toString(16).padStart(2, '0')).join('');
+                    log(`Received: ${hex}`);
+                });
+
+                connected = true;
+                document.getElementById('connectBtn').innerText = 'Disconnect';
+                document.getElementById('status').innerText = `Status: Connected to ${device.name}`;
+                setControlsEnabled(true);
+
+            } catch (error) {
+                log("Error: " + error);
+            }
+        }
+
+        function disconnect() {
+            if (device && device.gatt.connected) {
+                device.gatt.disconnect();
+            }
+            connected = false;
+            writeChar = null;
+            notifyChar = null;
+            document.getElementById('connectBtn').innerText = 'Connect to Spark';
+            document.getElementById('status').innerText = 'Status: Disconnected';
+            setControlsEnabled(false);
+            log('Disconnected.');
+        }
+
+        async function selectPreset(index) {
+            log(`Setting Preset ${index}`);
+            const setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${index}f7`);
+            await writeChar.writeValue(setCmd);
+        }
+
+        async function runSequence() {
+            for (let x = 0; x < 4; x++) {
+                log(`Setting Preset ${x}`);
+                const setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${x}f7`);
+                await writeChar.writeValue(setCmd);
+                
+                await new Promise(r => setTimeout(r, 2000));
+
+                log(`Getting Preset ${x}`);
+                const getCmd = hexToBytes(`01fe000053fe1b000000000000000000f0013a1502010000000${x}f7`);
+                await writeChar.writeValue(getCmd);
+
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+
+        document.getElementById('connectBtn').addEventListener('click', () => {
+            connected ? disconnect() : connect();
+        });
+
+        document.getElementById('runSeqBtn').addEventListener('click', runSequence);
+
+        document.querySelectorAll('.presetBtn').forEach(btn => {
+            btn.addEventListener('click', () => selectPreset(parseInt(btn.dataset.preset)));
+        });
+    </script>
+</body>
+</html>
