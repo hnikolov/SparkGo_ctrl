@@ -45,17 +45,22 @@
 
     <script>
         // Spark Go BLE Service and Characteristics
-        const SPARK_SERVICE_UUID = "0000ffc0-0000-1000-8000-00805f9b34fb";
-        const SPARK_WRITE_UUID   = "0000ffc1-0000-1000-8000-00805f9b34fb";
-        const SPARK_NOTIFY_UUID  = "0000ffc2-0000-1000-8000-00805f9b34fb";
+        const SPARK_GO_SERVICE_UUID = "0000ffc0-0000-1000-8000-00805f9b34fb";
+        const SPARK_GO_WRITE_UUID   = "0000ffc1-0000-1000-8000-00805f9b34fb";
+        const SPARK_GO_NOTIFY_UUID  = "0000ffc2-0000-1000-8000-00805f9b34fb";
 
-        // Generic device BLE Service and Characteristics
+        // Spark 40 (40W, gen. 1) BLE Service and Characteristics
+        const SPARK_40_SERVICE_UUID = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
+        const SPARK_40_WRITE_UUID   = "49535343-1e4d-4bd9-ba61-23c647249616";
+        const SPARK_40_NOTIFY_UUID  = "49535343-8841-43f4-a8d4-ecbe34729bb3";
+
+        // Generic device (Mooer GTRS W900 etc.) BLE Service and Characteristics
         const GENERIC_SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
         const GENERIC_CHAR_UUID    = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
         let device, server, writeChar, notifyChar;
         let connected = false;
-        let deviceType = null; // 'spark' or 'generic'
+        let deviceType = null; // 'sparkgo', 'spark40', or 'generic'
 
         function setControlsEnabled(enabled) {
             document.getElementById('runSeqBtn').disabled = !enabled;
@@ -81,18 +86,24 @@
                 log("Scanning for BLE devices...");
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: [SPARK_SERVICE_UUID, GENERIC_SERVICE_UUID]
+                    optionalServices: [SPARK_GO_SERVICE_UUID, SPARK_40_SERVICE_UUID, GENERIC_SERVICE_UUID]
                 });
 
                 log(`Connecting to ${device.name || 'Unknown'}...`);
                 server = await device.gatt.connect();
 
-                if (device.name && device.name.startsWith('Spark')) {
-                    deviceType = 'spark';
-                    log('Detected Spark device');
-                    const service = await server.getPrimaryService(SPARK_SERVICE_UUID);
-                    writeChar = await service.getCharacteristic(SPARK_WRITE_UUID);
-                    notifyChar = await service.getCharacteristic(SPARK_NOTIFY_UUID);
+                if (device.name && device.name.includes('Go')) {
+                    deviceType = 'sparkgo';
+                    log('Detected Spark Go');
+                    const service = await server.getPrimaryService(SPARK_GO_SERVICE_UUID);
+                    writeChar = await service.getCharacteristic(SPARK_GO_WRITE_UUID);
+                    notifyChar = await service.getCharacteristic(SPARK_GO_NOTIFY_UUID);
+                } else if (device.name && device.name.includes('40')) {
+                    deviceType = 'spark40';
+                    log('Detected Spark 40');
+                    const service = await server.getPrimaryService(SPARK_40_SERVICE_UUID);
+                    writeChar = await service.getCharacteristic(SPARK_40_WRITE_UUID);
+                    notifyChar = await service.getCharacteristic(SPARK_40_NOTIFY_UUID);
                 } else {
                     deviceType = 'generic';
                     log('Detected generic BLE device');
@@ -138,11 +149,19 @@
             log('Disconnected.');
         }
 
+        // Mooer GTRS W900 Preset Commands (last byte is preset index):
+        // Preset 1	Dark Blue	7E 00 00 00 01 00
+        // Preset 2	Purple	    7E 00 00 00 01 01
+        // Preset 3	Orange	    7E 00 00 00 01 02
+        // Preset 4	Sky Blue	7E 00 00 00 01 03
+        
         async function selectPreset(index) {
             log(`Setting Preset ${index}`);
             let setCmd;
-            if (deviceType === 'spark') {
+            if (deviceType === 'sparkgo') {
                 setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${index}f7`);
+            } else if (deviceType === 'spark40') {
+                setCmd = hexToBytes(`01fe000053fe1a000000000000000000f00101010${index}f7`);
             } else {
                 setCmd = hexToBytes(`7e000000010${index}`);
             }
@@ -153,8 +172,10 @@
             for (let x = 0; x < 4; x++) {
                 log(`Setting Preset ${x}`);
                 let setCmd;
-                if (deviceType === 'spark') {
+                if (deviceType === 'sparkgo') {
                     setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${x}f7`);
+                } else if (deviceType === 'spark40') {
+                    setCmd = hexToBytes(`01fe000053fe1a000000000000000000f00101010${x}f7`);
                 } else {
                     setCmd = hexToBytes(`7e000000010${x}`);
                 }
@@ -162,7 +183,7 @@
                 
                 await new Promise(r => setTimeout(r, 2000));
 
-                if (deviceType === 'spark') {
+                if (deviceType === 'sparkgo') {
                     log(`Getting Preset ${x}`);
                     const getCmd = hexToBytes(`01fe000053fe1b000000000000000000f0013a1502010000000${x}f7`);
                     await writeChar.writeValue(getCmd);
