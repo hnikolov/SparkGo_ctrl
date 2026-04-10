@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>BLE Guitar Controller</h1>
+    <h1>BLE Presets Switch (Влади)</h1>
     <div id="controls">
         <button id="connectBtn">Connect</button>
         <button id="runSeqBtn" disabled>Run Sequence</button>
@@ -44,7 +44,7 @@
     <div id="log"></div>
 
     <script>
-        // Spark Go BLE Service and Characteristics
+        // Spark Go BLE Service and Characteristics (MIDI Generic Access Profile)
         const SPARK_GO_SERVICE_UUID = "0000ffc0-0000-1000-8000-00805f9b34fb";
         const SPARK_GO_WRITE_UUID   = "0000ffc1-0000-1000-8000-00805f9b34fb";
         const SPARK_GO_NOTIFY_UUID  = "0000ffc2-0000-1000-8000-00805f9b34fb";
