@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>BLE Presets Switch (Влади)</h1>
+    <h1>BLE Presets Switch (Влади), v1</h1>
     <div id="controls">
         <button id="connectBtn">Connect</button>
         <button id="runSeqBtn" disabled>Run Sequence</button>
@@ -60,7 +60,7 @@
 
         let device, server, writeChar, notifyChar;
         let connected = false;
-        let deviceType = null; // 'sparkgo', 'spark40', or 'generic'
+        let deviceType = null; // 'sparkgo', 'spark40', 'gtrs', or 'generic'
 
         function setControlsEnabled(enabled) {
             document.getElementById('runSeqBtn').disabled = !enabled;
@@ -92,24 +92,30 @@
                 log(`Connecting to ${device.name || 'Unknown'}...`);
                 server = await device.gatt.connect();
 
-                if (device.name && device.name.includes('Go')) {
+                if (device.name && device.name.includes('GO')) {
                     deviceType = 'sparkgo';
-                    log('Detected Spark Go');
+                    log('Detected Spark GO');
                     const service = await server.getPrimaryService(SPARK_GO_SERVICE_UUID);
                     writeChar = await service.getCharacteristic(SPARK_GO_WRITE_UUID);
                     notifyChar = await service.getCharacteristic(SPARK_GO_NOTIFY_UUID);
                 } else if (device.name && device.name.includes('40')) {
                     deviceType = 'spark40';
                     log('Detected Spark 40');
-                    const service = await server.getPrimaryService(SPARK_40_SERVICE_UUID);
-                    writeChar = await service.getCharacteristic(SPARK_40_WRITE_UUID);
-                    notifyChar = await service.getCharacteristic(SPARK_40_NOTIFY_UUID);
+                    const service = await server.getPrimaryService(SPARK_GO_SERVICE_UUID);
+                    writeChar = await service.getCharacteristic(SPARK_GO_WRITE_UUID);
+                    notifyChar = await service.getCharacteristic(SPARK_GO_NOTIFY_UUID);
+                } else if (device.name && device.name.includes('GTRS')) {
+                    deviceType = 'gtrs';
+                    log('Detected GTRS Wireless Guitar');
+                    const service = await server.getPrimaryService(SPARK_GO_SERVICE_UUID);
+                    writeChar = await service.getCharacteristic(SPARK_GO_WRITE_UUID);
+                    notifyChar = await service.getCharacteristic(SPARK_GO_NOTIFY_UUID);
                 } else {
                     deviceType = 'generic';
                     log('Detected generic BLE device');
-                    const service = await server.getPrimaryService(GENERIC_SERVICE_UUID);
-                    writeChar = await service.getCharacteristic(GENERIC_CHAR_UUID);
-                    notifyChar = writeChar;
+                    const service = await server.getPrimaryService(SPARK_GO_SERVICE_UUID);
+                    writeChar = await service.getCharacteristic(SPARK_GO_WRITE_UUID);
+                    notifyChar = await service.getCharacteristic(SPARK_GO_NOTIFY_UUID);
                 }
 
                 // Setup Notifications
@@ -162,7 +168,7 @@
                 setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${index}f7`);
             } else if (deviceType === 'spark40') {
                 setCmd = hexToBytes(`01fe000053fe1a000000000000000000f00101010${index}f7`);
-            } else {
+            } else if (deviceType === 'gtrs') {
                 setCmd = hexToBytes(`7e000000010${index}`);
             }
             await writeChar.writeValue(setCmd);
@@ -176,7 +182,7 @@
                     setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${x}f7`);
                 } else if (deviceType === 'spark40') {
                     setCmd = hexToBytes(`01fe000053fe1a000000000000000000f00101010${x}f7`);
-                } else {
+                } else if (deviceType === 'gtrs') {
                     setCmd = hexToBytes(`7e000000010${x}`);
                 }
                 await writeChar.writeValue(setCmd);
