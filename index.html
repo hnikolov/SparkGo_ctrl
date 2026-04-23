@@ -107,9 +107,9 @@
                 } else if (device.name && device.name.includes('GTRS')) {
                     deviceType = 'gtrs';
                     log('Detected GTRS Wireless Guitar');
-                    const service = await server.getPrimaryService(SPARK_GO_SERVICE_UUID);
-                    writeChar = await service.getCharacteristic(SPARK_GO_WRITE_UUID);
-                    notifyChar = await service.getCharacteristic(SPARK_GO_NOTIFY_UUID);
+                    const service = await server.getPrimaryService(GENERIC_SERVICE_UUID);
+                    writeChar = await service.getCharacteristic(GENERIC_CHAR_UUID);
+                    notifyChar = await service.getCharacteristic(GENERIC_CHAR_UUID);
                 } else {
                     deviceType = 'generic';
                     log('Detected generic BLE device');
@@ -160,6 +160,8 @@
         // Preset 2	Purple	    7E 00 00 00 01 01
         // Preset 3	Orange	    7E 00 00 00 01 02
         // Preset 4	Sky Blue	7E 00 00 00 01 03
+        // Spark 40 not woeking:
+        // setCmd = hexToBytes(`01fe000053fe1a000000000000000000f00101010${index}f7`);
         
         async function selectPreset(index) {
             log(`Setting Preset ${index}`);
@@ -167,7 +169,7 @@
             if (deviceType === 'sparkgo') {
                 setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${index}f7`);
             } else if (deviceType === 'spark40') {
-                setCmd = hexToBytes(`01fe000053fe1a000000000000000000f00101010${index}f7`);
+                setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${index}f7`);
             } else if (deviceType === 'gtrs') {
                 setCmd = hexToBytes(`7e000000010${index}`);
             }
@@ -181,7 +183,8 @@
                 if (deviceType === 'sparkgo') {
                     setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${x}f7`);
                 } else if (deviceType === 'spark40') {
-                    setCmd = hexToBytes(`01fe000053fe1a000000000000000000f00101010${x}f7`);
+                    setCmd = hexToBytes(`01fe000053fe1a000000000000000000f0013a15013800000${x}f7`);
+
                 } else if (deviceType === 'gtrs') {
                     setCmd = hexToBytes(`7e000000010${x}`);
                 }
