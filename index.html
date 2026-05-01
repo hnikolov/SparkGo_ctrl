@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>BLE Presets Switch (Влади), v2</h1>
+    <h1>BLE Presets Switch (Влади), v3</h1>
     <div id="controls">
         <button id="connectBtn">Connect</button>
         <button id="runSeqBtn" disabled>Run Sequence</button>
@@ -55,9 +55,11 @@
         const SPARK_40_NOTIFY_UUID  = "49535343-8841-43f4-a8d4-ecbe34729bb3";
 
         // Generic device (Mooer GTRS W900 etc.) BLE Service and Characteristics
-        const GENERIC_SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
-        const GENERIC_CHAR_UUID    = "0000ffe1-0000-1000-8000-00805f9b34fb";
-
+        // const GENERIC_SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
+        // const GENERIC_CHAR_UUID    = "0000ffe1-0000-1000-8000-00805f9b34fb";
+        const GENERIC_SERVICE_UUID  = '03b80e5a-ede8-4b33-a751-6ce34ec4c700';
+        const GENERIC_CHAR_UUID     = '7772e5db-3868-4112-a1a9-f2669d106bf3';
+    
         let device, server, writeChar, notifyChar;
         let connected = false;
         let deviceType = null; // 'sparkgo', 'spark40', 'gtrs', or 'generic'
